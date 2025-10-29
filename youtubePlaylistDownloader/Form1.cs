@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using YoutubeExplode;
@@ -18,8 +20,13 @@ namespace youtubePlaylistDownloader
         private Button btnSelectFolder;
         private TextBox txtDownloadFolder;
         private ListBox lstDownloads;
+        private ListBox lstSimilarFiles;
+        private Button btnStop;
+        private NumericUpDown numDownloadCount;
+        private Label lblDownloadCount;
 
         private string downloadFolder;
+        private CancellationTokenSource cancellationTokenSource;
 
         public Form1()
         {
@@ -30,7 +37,6 @@ namespace youtubePlaylistDownloader
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            // Set default download folder to My Music
             downloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
             txtDownloadFolder.Text = downloadFolder;
         }
@@ -47,9 +53,18 @@ namespace youtubePlaylistDownloader
             btnSelectFolder = new Button { Text = "Browse...", Location = new System.Drawing.Point(450, 40), Width = 80 };
             btnSelectFolder.Click += BtnSelectFolder_Click;
 
+            // Download Count
+            lblDownloadCount = new Label { Text = "Number of downloads:", Location = new System.Drawing.Point(10, 75), Width = 120 };
+            numDownloadCount = new NumericUpDown { Location = new System.Drawing.Point(140, 75), Width = 60, Minimum = 1, Maximum = 100, Value = 10 };
+
             // Download Button
-            btnDownload = new Button { Text = "Download Playlist as MP3", Location = new System.Drawing.Point(10, 75), Width = 200 };
+            btnDownload = new Button { Text = "Download Playlist as MP3", Location = new System.Drawing.Point(210, 75), Width = 200 };
             btnDownload.Click += BtnDownload_Click;
+
+            // Stop Button
+            btnStop = new Button { Text = "Stop", Location = new System.Drawing.Point(420, 75), Width = 80 };
+            btnStop.Click += BtnStop_Click;
+            btnStop.Enabled = false;
 
             // Progress Bar
             progressBar = new ProgressBar { Width = 520, Location = new System.Drawing.Point(10, 110) };
@@ -58,17 +73,28 @@ namespace youtubePlaylistDownloader
             lblStatus = new Label { Width = 520, Location = new System.Drawing.Point(10, 140) };
 
             // Downloads List
-            lstDownloads = new ListBox { Width = 520, Height = 200, Location = new System.Drawing.Point(10, 170) };
+            lstDownloads = new ListBox { Width = 250, Height = 200, Location = new System.Drawing.Point(10, 170) };
+            var lblDownloads = new Label { Text = "Downloads:", Location = new System.Drawing.Point(10, 150), Width = 100 };
+
+            // Similar Files List
+            lstSimilarFiles = new ListBox { Width = 250, Height = 200, Location = new System.Drawing.Point(280, 170) };
+            var lblSimilar = new Label { Text = "Similar Files (Review):", Location = new System.Drawing.Point(280, 150), Width = 150 };
 
             Controls.Add(lblUrl);
             Controls.Add(txtPlaylistUrl);
             Controls.Add(lblFolder);
             Controls.Add(txtDownloadFolder);
             Controls.Add(btnSelectFolder);
+            Controls.Add(lblDownloadCount);
+            Controls.Add(numDownloadCount);
             Controls.Add(btnDownload);
+            Controls.Add(btnStop);
             Controls.Add(progressBar);
             Controls.Add(lblStatus);
+            Controls.Add(lblDownloads);
             Controls.Add(lstDownloads);
+            Controls.Add(lblSimilar);
+            Controls.Add(lstSimilarFiles);
 
             this.Width = 560;
             this.Height = 430;
@@ -94,24 +120,45 @@ namespace youtubePlaylistDownloader
             btnDownload.Enabled = false;
             btnSelectFolder.Enabled = false;
             txtPlaylistUrl.Enabled = false;
+            numDownloadCount.Enabled = false;
+            btnStop.Enabled = true;
             lstDownloads.Items.Clear();
+            lstSimilarFiles.Items.Clear();
             lblStatus.Text = "Fetching playlist...";
+            cancellationTokenSource = new CancellationTokenSource();
+            var token = cancellationTokenSource.Token;
             var playlistUrl = txtPlaylistUrl.Text;
             var youtube = new YoutubeClient();
 
             try
             {
                 var playlist = await youtube.Playlists.GetVideosAsync(playlistUrl);
-                int total = playlist.Count;
+                int totalToDownload = (int)numDownloadCount.Value;
+                int total = Math.Min(totalToDownload, playlist.Count);
                 int current = 0;
                 progressBar.Maximum = total;
                 progressBar.Value = 0;
 
-                foreach (var video in playlist)
+                foreach (var video in playlist.Take(total))
                 {
+                    if (token.IsCancellationRequested)
+                    {
+                        lblStatus.Text = "Download stopped by user.";
+                        break;
+                    }
+
                     string fileName = $"{SanitizeFileName(video.Title)}.mp3";
-                    string tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.mp4");
                     string outputFile = Path.Combine(downloadFolder, fileName);
+
+                    // Check for similar files
+                    var similarFile = FindSimilarFile(fileName, downloadFolder);
+                    if (similarFile != null)
+                    {
+                        lstSimilarFiles.Items.Add($"Skip: {fileName} (Similar: {Path.GetFileName(similarFile)})");
+                        continue;
+                    }
+
+                    string tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.mp4");
 
                     lstDownloads.Items.Add($"Downloading: {video.Title}");
                     lblStatus.Text = $"Downloading: {video.Title}";
@@ -144,7 +191,47 @@ namespace youtubePlaylistDownloader
                 btnDownload.Enabled = true;
                 btnSelectFolder.Enabled = true;
                 txtPlaylistUrl.Enabled = true;
+                numDownloadCount.Enabled = true;
+                btnStop.Enabled = false;
             }
+        }
+
+        private void BtnStop_Click(object sender, EventArgs e)
+        {
+            cancellationTokenSource?.Cancel();
+            lblStatus.Text = "Stopping download...";
+        }
+
+        // Checks for similar files in the download folder (≥50% word match)
+        private string FindSimilarFile(string fileName, string folder)
+        {
+            var files = Directory.GetFiles(folder, "*.mp3");
+            var fileWords = GetWords(Path.GetFileNameWithoutExtension(fileName));
+
+            foreach (var file in files)
+            {
+                var existingWords = GetWords(Path.GetFileNameWithoutExtension(file));
+                double match = WordMatchPercentage(fileWords, existingWords);
+                if (match >= 0.5)
+                {
+                    return file;
+                }
+            }
+            return null;
+        }
+
+        // Splits a string into lowercase words
+        private string[] GetWords(string name)
+        {
+            return name.ToLower().Split(new[] { ' ', '_', '-', '.', '[', ']', '(', ')', ',' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        // Returns the percentage of matching words between two arrays
+        private double WordMatchPercentage(string[] words1, string[] words2)
+        {
+            if (words1.Length == 0 || words2.Length == 0) return 0;
+            int matchCount = words1.Count(w => words2.Contains(w));
+            return (double)matchCount / Math.Max(words1.Length, words2.Length);
         }
 
         private async Task ConvertToMp3Async(string inputPath, string outputPath)
