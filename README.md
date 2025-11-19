@@ -86,7 +86,7 @@
 
 # 
 
-# ![Main Window](screenshots/screenshot.png)
+# ![Main Window](screenshots/screenshot2.png)
 
 # 
 
