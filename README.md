@@ -86,7 +86,7 @@
 
 # 
 
-# \*(Add screenshots of your UI here)\*
+# ![Main Window](screenshots/screenshot.png)
 
 # 
 
