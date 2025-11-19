@@ -43,42 +43,170 @@ namespace youtubePlaylistDownloader
 
         private void InitializeCustomControls()
         {
+            // Modern color palette
+            var backColor = System.Drawing.Color.FromArgb(34, 40, 49);      // Dark background
+            var accentColor = System.Drawing.Color.FromArgb(0, 173, 181);   // Accent (buttons)
+            var textColor = System.Drawing.Color.White;                     // Foreground
+            var boxColor = System.Drawing.Color.FromArgb(57, 62, 70);       // Input boxes
+
+            this.BackColor = backColor;
+
             // Playlist URL
-            var lblUrl = new Label { Text = "Playlist URL:", Location = new System.Drawing.Point(10, 10), Width = 80 };
-            txtPlaylistUrl = new TextBox { Width = 400, Location = new System.Drawing.Point(100, 10) };
+            var lblUrl = new Label
+            {
+                Text = "Playlist URL:",
+                Location = new System.Drawing.Point(10, 10),
+                Width = 100,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
+            };
+            txtPlaylistUrl = new TextBox
+            {
+                Width = 400,
+                Location = new System.Drawing.Point(120, 10),
+                BackColor = boxColor,
+                ForeColor = textColor,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new System.Drawing.Font("Segoe UI", 10)
+            };
 
             // Download Folder
-            var lblFolder = new Label { Text = "Download Folder:", Location = new System.Drawing.Point(10, 40), Width = 100 };
-            txtDownloadFolder = new TextBox { Width = 320, Location = new System.Drawing.Point(120, 40), ReadOnly = true };
-            btnSelectFolder = new Button { Text = "Browse...", Location = new System.Drawing.Point(450, 40), Width = 80 };
+            var lblFolder = new Label
+            {
+                Text = "Download Folder:",
+                Location = new System.Drawing.Point(10, 45),
+                Width = 120,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+            };
+            txtDownloadFolder = new TextBox
+            {
+                Width = 320,
+                Location = new System.Drawing.Point(140, 45),
+                ReadOnly = true,
+                BackColor = boxColor,
+                ForeColor = textColor,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new System.Drawing.Font("Segoe UI", 9)
+            };
+            btnSelectFolder = new Button
+            {
+                Text = "Browse...",
+                Location = new System.Drawing.Point(470, 45),
+                Width = 60,
+                BackColor = accentColor,
+                ForeColor = backColor,
+                FlatStyle = FlatStyle.Flat,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+            };
+            btnSelectFolder.FlatAppearance.BorderSize = 0;
             btnSelectFolder.Click += BtnSelectFolder_Click;
 
             // Download Count
-            lblDownloadCount = new Label { Text = "Number of downloads:", Location = new System.Drawing.Point(10, 75), Width = 120 };
-            numDownloadCount = new NumericUpDown { Location = new System.Drawing.Point(140, 75), Width = 60, Minimum = 1, Maximum = 100, Value = 10 };
+            lblDownloadCount = new Label
+            {
+                Text = "Number of downloads:",
+                Location = new System.Drawing.Point(10, 80),
+                Width = 150,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+            };
+            numDownloadCount = new NumericUpDown
+            {
+                Location = new System.Drawing.Point(170, 80),
+                Width = 60,
+                Minimum = 1,
+                Maximum = 100,
+                Value = 10,
+                BackColor = boxColor,
+                ForeColor = textColor,
+                Font = new System.Drawing.Font("Segoe UI", 10)
+            };
 
             // Download Button
-            btnDownload = new Button { Text = "Download Playlist as MP3", Location = new System.Drawing.Point(210, 75), Width = 200 };
+            btnDownload = new Button
+            {
+                Text = "Download Playlist as MP3",
+                Location = new System.Drawing.Point(240, 80),
+                Width = 180,
+                BackColor = accentColor,
+                ForeColor = backColor,
+                FlatStyle = FlatStyle.Flat,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+            };
+            btnDownload.FlatAppearance.BorderSize = 0;
             btnDownload.Click += BtnDownload_Click;
 
             // Stop Button
-            btnStop = new Button { Text = "Stop", Location = new System.Drawing.Point(420, 75), Width = 80 };
+            btnStop = new Button
+            {
+                Text = "Stop",
+                Location = new System.Drawing.Point(430, 80),
+                Width = 100,
+                BackColor = System.Drawing.Color.FromArgb(238, 59, 59),
+                ForeColor = backColor,
+                FlatStyle = FlatStyle.Flat,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold),
+                Enabled = false
+            };
+            btnStop.FlatAppearance.BorderSize = 0;
             btnStop.Click += BtnStop_Click;
-            btnStop.Enabled = false;
 
             // Progress Bar
-            progressBar = new ProgressBar { Width = 520, Location = new System.Drawing.Point(10, 110) };
+            progressBar = new ProgressBar
+            {
+                Width = 520,
+                Location = new System.Drawing.Point(10, 120),
+                BackColor = boxColor,
+                ForeColor = accentColor
+            };
 
             // Status Label
-            lblStatus = new Label { Width = 520, Location = new System.Drawing.Point(10, 140) };
+            lblStatus = new Label
+            {
+                Width = 520,
+                Location = new System.Drawing.Point(10, 150),
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
+            };
 
             // Downloads List
-            lstDownloads = new ListBox { Width = 250, Height = 200, Location = new System.Drawing.Point(10, 170) };
-            var lblDownloads = new Label { Text = "Downloads:", Location = new System.Drawing.Point(10, 150), Width = 100 };
+            var lblDownloads = new Label
+            {
+                Text = "Downloads:",
+                Location = new System.Drawing.Point(10, 175),
+                Width = 100,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
+            };
+            lstDownloads = new ListBox
+            {
+                Width = 250,
+                Height = 200,
+                Location = new System.Drawing.Point(10, 200),
+                BackColor = boxColor,
+                ForeColor = textColor,
+                Font = new System.Drawing.Font("Segoe UI", 10)
+            };
 
             // Similar Files List
-            lstSimilarFiles = new ListBox { Width = 250, Height = 200, Location = new System.Drawing.Point(280, 170) };
-            var lblSimilar = new Label { Text = "Similar Files (Review):", Location = new System.Drawing.Point(280, 150), Width = 150 };
+            var lblSimilar = new Label
+            {
+                Text = "Similar Files (Review):",
+                Location = new System.Drawing.Point(280, 175),
+                Width = 180,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
+            };
+            lstSimilarFiles = new ListBox
+            {
+                Width = 250,
+                Height = 200,
+                Location = new System.Drawing.Point(280, 200),
+                BackColor = boxColor,
+                ForeColor = textColor,
+                Font = new System.Drawing.Font("Segoe UI", 10)
+            };
 
             Controls.Add(lblUrl);
             Controls.Add(txtPlaylistUrl);
@@ -97,10 +225,11 @@ namespace youtubePlaylistDownloader
             Controls.Add(lstSimilarFiles);
 
             this.Width = 560;
-            this.Height = 430;
+            this.Height = 470;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
         }
+
 
         private void BtnSelectFolder_Click(object sender, EventArgs e)
         {
