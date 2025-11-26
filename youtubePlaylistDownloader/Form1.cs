@@ -2,11 +2,14 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using YoutubeExplode;
 using YoutubeExplode.Common;
+using YoutubeExplode.Playlists;
+using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 
 namespace youtubePlaylistDownloader
@@ -24,6 +27,7 @@ namespace youtubePlaylistDownloader
         private Button btnStop;
         private NumericUpDown numDownloadCount;
         private Label lblDownloadCount;
+        private ComboBox cmbFormat; // <-- Added
 
         private string downloadFolder;
         private CancellationTokenSource cancellationTokenSource;
@@ -123,11 +127,32 @@ namespace youtubePlaylistDownloader
                 Font = new System.Drawing.Font("Segoe UI", 10)
             };
 
+            // Format ComboBox
+            var lblFormat = new Label
+            {
+                Text = "Format:",
+                Location = new System.Drawing.Point(10, 115),
+                Width = 60,
+                ForeColor = accentColor,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+            };
+            cmbFormat = new ComboBox
+            {
+                Location = new System.Drawing.Point(80, 115),
+                Width = 100,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new System.Drawing.Font("Segoe UI", 9),
+                BackColor = boxColor,
+                ForeColor = textColor
+            };
+            cmbFormat.Items.AddRange(new object[] { "MP3", "MP4" });
+            cmbFormat.SelectedIndex = 0;
+
             // Download Button
             btnDownload = new Button
             {
-                Text = "Download Playlist as MP3",
-                Location = new System.Drawing.Point(240, 80),
+                Text = "Download Playlist",
+                Location = new System.Drawing.Point(200, 115),
                 Width = 180,
                 BackColor = accentColor,
                 ForeColor = backColor,
@@ -141,7 +166,7 @@ namespace youtubePlaylistDownloader
             btnStop = new Button
             {
                 Text = "Stop",
-                Location = new System.Drawing.Point(430, 80),
+                Location = new System.Drawing.Point(400, 115),
                 Width = 100,
                 BackColor = System.Drawing.Color.FromArgb(238, 59, 59),
                 ForeColor = backColor,
@@ -156,7 +181,7 @@ namespace youtubePlaylistDownloader
             progressBar = new ProgressBar
             {
                 Width = 520,
-                Location = new System.Drawing.Point(10, 120),
+                Location = new System.Drawing.Point(10, 150),
                 BackColor = boxColor,
                 ForeColor = accentColor
             };
@@ -165,7 +190,7 @@ namespace youtubePlaylistDownloader
             lblStatus = new Label
             {
                 Width = 520,
-                Location = new System.Drawing.Point(10, 150),
+                Location = new System.Drawing.Point(10, 180),
                 ForeColor = accentColor,
                 Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
             };
@@ -174,7 +199,7 @@ namespace youtubePlaylistDownloader
             var lblDownloads = new Label
             {
                 Text = "Downloads:",
-                Location = new System.Drawing.Point(10, 175),
+                Location = new System.Drawing.Point(10, 205),
                 Width = 100,
                 ForeColor = accentColor,
                 Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
@@ -183,7 +208,7 @@ namespace youtubePlaylistDownloader
             {
                 Width = 250,
                 Height = 200,
-                Location = new System.Drawing.Point(10, 200),
+                Location = new System.Drawing.Point(10, 230),
                 BackColor = boxColor,
                 ForeColor = textColor,
                 Font = new System.Drawing.Font("Segoe UI", 10)
@@ -193,7 +218,7 @@ namespace youtubePlaylistDownloader
             var lblSimilar = new Label
             {
                 Text = "Similar Files (Review):",
-                Location = new System.Drawing.Point(280, 175),
+                Location = new System.Drawing.Point(280, 205),
                 Width = 180,
                 ForeColor = accentColor,
                 Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold)
@@ -202,7 +227,7 @@ namespace youtubePlaylistDownloader
             {
                 Width = 250,
                 Height = 200,
-                Location = new System.Drawing.Point(280, 200),
+                Location = new System.Drawing.Point(280, 230),
                 BackColor = boxColor,
                 ForeColor = textColor,
                 Font = new System.Drawing.Font("Segoe UI", 10)
@@ -215,6 +240,8 @@ namespace youtubePlaylistDownloader
             Controls.Add(btnSelectFolder);
             Controls.Add(lblDownloadCount);
             Controls.Add(numDownloadCount);
+            Controls.Add(lblFormat);
+            Controls.Add(cmbFormat);
             Controls.Add(btnDownload);
             Controls.Add(btnStop);
             Controls.Add(progressBar);
@@ -225,11 +252,10 @@ namespace youtubePlaylistDownloader
             Controls.Add(lstSimilarFiles);
 
             this.Width = 560;
-            this.Height = 470;
+            this.Height = 500;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
         }
-
 
         private void BtnSelectFolder_Click(object sender, EventArgs e)
         {
@@ -251,6 +277,7 @@ namespace youtubePlaylistDownloader
             txtPlaylistUrl.Enabled = false;
             numDownloadCount.Enabled = false;
             btnStop.Enabled = true;
+            cmbFormat.Enabled = false;
             lstDownloads.Items.Clear();
             lstSimilarFiles.Items.Clear();
             lblStatus.Text = "Fetching playlist...";
@@ -267,6 +294,7 @@ namespace youtubePlaylistDownloader
                 int current = 0;
                 progressBar.Maximum = total;
                 progressBar.Value = 0;
+                string format = cmbFormat.SelectedItem.ToString();
 
                 foreach (var video in playlist.Take(total))
                 {
@@ -276,11 +304,12 @@ namespace youtubePlaylistDownloader
                         break;
                     }
 
-                    string fileName = $"{SanitizeFileName(video.Title)}.mp3";
+                    string fileNameBase = SanitizeFileName(video.Title);
+                    string fileName = format == "MP3" ? $"{fileNameBase}.mp3" : $"{fileNameBase}.mp4";
                     string outputFile = Path.Combine(downloadFolder, fileName);
 
                     // Check for similar files
-                    var similarFile = FindSimilarFile(fileName, downloadFolder);
+                    var similarFile = FindSimilarFile(fileName, downloadFolder, format);
                     if (similarFile != null)
                     {
                         lstSimilarFiles.Items.Add($"Skip: {fileName} (Similar: {Path.GetFileName(similarFile)})");
@@ -292,17 +321,32 @@ namespace youtubePlaylistDownloader
                     lstDownloads.Items.Add($"Downloading: {video.Title}");
                     lblStatus.Text = $"Downloading: {video.Title}";
 
-                    // Get the best audio stream
-                    var streamManifest = await youtube.Videos.Streams.GetManifestAsync(video.Id);
-                    var audioStreamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+                    // Download thumbnail
+                    await DownloadThumbnailAsync(video, downloadFolder, fileNameBase);
 
-                    // Download audio stream
-                    await youtube.Videos.Streams.DownloadAsync(audioStreamInfo, tempFile);
+                    if (format == "MP3")
+                    {
+                        // Get the best audio stream
+                        var streamManifest = await youtube.Videos.Streams.GetManifestAsync(video.Id);
+                        var audioStreamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 
-                    // Convert to MP3 using FFmpeg
-                    await ConvertToMp3Async(tempFile, outputFile);
+                        // Download audio stream
+                        await youtube.Videos.Streams.DownloadAsync(audioStreamInfo, tempFile);
 
-                    File.Delete(tempFile);
+                        // Convert to MP3 using FFmpeg
+                        await ConvertToMp3Async(tempFile, outputFile);
+
+                        File.Delete(tempFile);
+                    }
+                    else // MP4
+                    {
+                        // Get the best muxed stream (audio+video)
+                        var streamManifest = await youtube.Videos.Streams.GetManifestAsync(video.Id);
+                        var muxedStreamInfo = streamManifest.GetMuxedStreams().GetWithHighestVideoQuality();
+
+                        // Download video stream
+                        await youtube.Videos.Streams.DownloadAsync(muxedStreamInfo, outputFile);
+                    }
 
                     lstDownloads.Items[lstDownloads.Items.Count - 1] = $"Downloaded: {video.Title}";
                     current++;
@@ -322,6 +366,7 @@ namespace youtubePlaylistDownloader
                 txtPlaylistUrl.Enabled = true;
                 numDownloadCount.Enabled = true;
                 btnStop.Enabled = false;
+                cmbFormat.Enabled = true;
             }
         }
 
@@ -331,10 +376,35 @@ namespace youtubePlaylistDownloader
             lblStatus.Text = "Stopping download...";
         }
 
-        // Checks for similar files in the download folder (≥50% word match)
-        private string FindSimilarFile(string fileName, string folder)
+        // Download thumbnail image for a video
+        private async Task DownloadThumbnailAsync(PlaylistVideo video, string folder, string fileNameBase)
         {
-            var files = Directory.GetFiles(folder, "*.mp3");
+            try
+            {
+                var thumbnailUrl = video.Thumbnails.OrderByDescending(t => t.Resolution.Area).FirstOrDefault()?.Url;
+                if (!string.IsNullOrEmpty(thumbnailUrl))
+                {
+                    string thumbPath = Path.Combine(folder, $"{fileNameBase}.jpg");
+                    using (var client = new WebClient())
+                    {
+                        //await client.DownloadFileTaskAsync(new Uri(thumbnailUrl), thumbPath);
+                        await DownloadThumbnailAsync(video, downloadFolder, fileNameBase);
+
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore thumbnail download errors
+            }
+        }
+
+
+        // Checks for similar files in the download folder (≥50% word match)
+        private string FindSimilarFile(string fileName, string folder, string format)
+        {
+            string ext = format == "MP3" ? "*.mp3" : "*.mp4";
+            var files = Directory.GetFiles(folder, ext);
             var fileWords = GetWords(Path.GetFileNameWithoutExtension(fileName));
 
             foreach (var file in files)
